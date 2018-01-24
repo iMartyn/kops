@@ -48,17 +48,20 @@ type TerraformTarget struct {
 	outputs map[string]*terraformOutputVariable
 	// files is a map of TF resource files that should be created
 	files map[string][]byte
+	// extra config to add to the provider block
+	extraProviderConfig map[string]string
 }
 
-func NewTerraformTarget(cloud fi.Cloud, region, project string, outDir string) *TerraformTarget {
+func NewTerraformTarget(cloud fi.Cloud, region, project string, outDir string, extraProviderConfig map[string]string) *TerraformTarget {
 	return &TerraformTarget{
 		Cloud:   cloud,
 		Region:  region,
 		Project: project,
 
-		outDir:  outDir,
-		files:   make(map[string][]byte),
-		outputs: make(map[string]*terraformOutputVariable),
+		outDir:              outDir,
+		files:               make(map[string][]byte),
+		outputs:             make(map[string]*terraformOutputVariable),
+		extraProviderConfig: extraProviderConfig,
 	}
 }
 
@@ -186,6 +189,9 @@ func (t *TerraformTarget) Finish(taskMap map[string]fi.Task) error {
 	} else if t.Cloud.ProviderID() == kops.CloudProviderAWS {
 		providerAWS := make(map[string]interface{})
 		providerAWS["region"] = t.Region
+		for k, v := range t.extraProviderConfig {
+			providerAWS[k] = v
+		}
 		providersByName["aws"] = providerAWS
 	} else if t.Cloud.ProviderID() == kops.CloudProviderVSphere {
 		providerVSphere := make(map[string]interface{})
