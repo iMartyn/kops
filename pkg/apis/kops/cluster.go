@@ -161,7 +161,7 @@ type ClusterSpec struct {
 	// EncryptionConfig controls if encryption is enabled
 	EncryptionConfig *bool `json:"encryptionConfig,omitempty"`
 	// TerraformProviderExtraConfig contains key/value pairs to add to the rendered terraform "provider" block
-	TerraformProviderExtraConfig map[string]string
+	TerraformProviderExtraConfig map[string]string `json:"terraformProviderExtraConfig",omitempty`
 }
 
 // FileAssetSpec defines the structure for a file asset
