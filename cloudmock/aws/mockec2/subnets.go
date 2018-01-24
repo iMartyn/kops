@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/golang/glog"
@@ -53,6 +54,11 @@ func (m *MockEC2) CreateSubnetRequest(*ec2.CreateSubnetInput) (*request.Request,
 	return nil, nil
 }
 
+func (m *MockEC2) CreateSubnetWithContext(aws.Context, *ec2.CreateSubnetInput, ...request.Option) (*ec2.CreateSubnetOutput, error) {
+	panic("Not implemented")
+	return nil, nil
+}
+
 func (m *MockEC2) CreateSubnet(request *ec2.CreateSubnetInput) (*ec2.CreateSubnetOutput, error) {
 	glog.Infof("CreateSubnet: %v", request)
 
@@ -60,9 +66,10 @@ func (m *MockEC2) CreateSubnet(request *ec2.CreateSubnetInput) (*ec2.CreateSubne
 	n := m.subnetNumber
 
 	subnet := &ec2.Subnet{
-		SubnetId:  s(fmt.Sprintf("subnet-%d", n)),
-		VpcId:     request.VpcId,
-		CidrBlock: request.CidrBlock,
+		SubnetId:         s(fmt.Sprintf("subnet-%d", n)),
+		VpcId:            request.VpcId,
+		CidrBlock:        request.CidrBlock,
+		AvailabilityZone: request.AvailabilityZone,
 	}
 
 	if m.subnets == nil {
@@ -83,6 +90,11 @@ func (m *MockEC2) DescribeSubnetsRequest(*ec2.DescribeSubnetsInput) (*request.Re
 	return nil, nil
 }
 
+func (m *MockEC2) DescribeSubnetsWithContext(aws.Context, *ec2.DescribeSubnetsInput, ...request.Option) (*ec2.DescribeSubnetsOutput, error) {
+	panic("Not implemented")
+	return nil, nil
+}
+
 func (m *MockEC2) DescribeSubnets(request *ec2.DescribeSubnetsInput) (*ec2.DescribeSubnetsOutput, error) {
 	glog.Infof("DescribeSubnets: %v", request)
 
@@ -93,7 +105,10 @@ func (m *MockEC2) DescribeSubnets(request *ec2.DescribeSubnetsInput) (*ec2.Descr
 		for _, filter := range request.Filters {
 			match := false
 			switch *filter.Name {
-
+			case "vpc-id":
+				if *subnet.main.VpcId == *filter.Values[0] {
+					match = true
+				}
 			default:
 				if strings.HasPrefix(*filter.Name, "tag:") {
 					match = m.hasTag(ec2.ResourceTypeSubnet, *subnet.main.SubnetId, filter)

@@ -77,7 +77,7 @@ func UsesKubenet(clusterSpec *kops.ClusterSpec) (bool, error) {
 	} else if networking.External != nil {
 		// external is based on kubenet
 		return true, nil
-	} else if networking.CNI != nil || networking.Weave != nil || networking.Flannel != nil || networking.Calico != nil || networking.Canal != nil || networking.Kuberouter != nil || networking.Romana != nil {
+	} else if networking.CNI != nil || networking.Weave != nil || networking.Flannel != nil || networking.Calico != nil || networking.Canal != nil || networking.Kuberouter != nil || networking.Romana != nil || networking.AmazonVPC != nil {
 		return false, nil
 	} else if networking.Kopeio != nil {
 		// Kopeio is based on kubenet / external
@@ -147,6 +147,7 @@ func Image(component string, clusterSpec *kops.ClusterSpec, assetsBuilder *asset
 	baseURL := clusterSpec.KubernetesVersion
 	baseURL = strings.TrimSuffix(baseURL, "/")
 
+	// TODO path.Join here?
 	tagURL := baseURL + "/bin/linux/amd64/" + component + ".docker_tag"
 	glog.V(2).Infof("Downloading docker tag for %s from: %s", component, tagURL)
 

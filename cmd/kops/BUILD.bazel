@@ -41,6 +41,7 @@ go_library(
         "root.go",
         "status_discovery.go",
         "toolbox.go",
+        "toolbox_bundle.go",
         "toolbox_convert_imported.go",
         "toolbox_dump.go",
         "toolbox_template.go",
@@ -66,6 +67,7 @@ go_library(
         "//pkg/apis/kops/v1alpha1:go_default_library",
         "//pkg/apis/kops/validation:go_default_library",
         "//pkg/assets:go_default_library",
+        "//pkg/bundle:go_default_library",
         "//pkg/client/simple:go_default_library",
         "//pkg/cloudinstances:go_default_library",
         "//pkg/dns:go_default_library",
@@ -78,6 +80,7 @@ go_library(
         "//pkg/pretty:go_default_library",
         "//pkg/resources:go_default_library",
         "//pkg/resources/ops:go_default_library",
+        "//pkg/sshcredentials:go_default_library",
         "//pkg/util/templater:go_default_library",
         "//pkg/validation:go_default_library",
         "//upup/pkg/fi:go_default_library",
@@ -91,12 +94,14 @@ go_library(
         "//util/pkg/ui:go_default_library",
         "//util/pkg/vfs:go_default_library",
         "//vendor/github.com/aws/aws-sdk-go/aws:go_default_library",
+        "//vendor/github.com/aws/aws-sdk-go/service/ec2:go_default_library",
         "//vendor/github.com/blang/semver:go_default_library",
         "//vendor/github.com/ghodss/yaml:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/github.com/spf13/cobra:go_default_library",
         "//vendor/github.com/spf13/cobra/doc:go_default_library",
         "//vendor/github.com/spf13/viper:go_default_library",
+        "//vendor/golang.org/x/crypto/ssh:go_default_library",
         "//vendor/k8s.io/api/core/v1:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/api/errors:go_default_library",
         "//vendor/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
@@ -116,17 +121,18 @@ go_library(
 
 go_binary(
     name = "kops",
+    embed = [":go_default_library"],
     importpath = "k8s.io/kops/cmd/kops",
-    library = ":go_default_library",
     visibility = ["//visibility:public"],
     x_defs = {
-        "k8s.io/kops.Version": "1.8.0-beta.1",  # keep
+        "k8s.io/kops.Version": "1.8.0",  # keep
         "k8s.io/kops.GitVersion": "{BUILD_SCM_REVISION}",  # keep
     },
 )
 
 go_test(
     name = "go_default_test",
+    size = "small",
     srcs = [
         "create_cluster_integration_test.go",
         "create_cluster_test.go",
@@ -139,8 +145,8 @@ go_test(
         "//tests/integration/create_cluster:exported_testdata",  # keep
         "//tests/integration/update_cluster:exported_testdata",  # keep
     ],
+    embed = [":go_default_library"],
     importpath = "k8s.io/kops/cmd/kops",
-    library = ":go_default_library",
     deps = [
         "//cmd/kops/util:go_default_library",
         "//pkg/apis/kops:go_default_library",
@@ -150,8 +156,11 @@ go_test(
         "//pkg/kopscodecs:go_default_library",
         "//pkg/testutils:go_default_library",
         "//upup/pkg/fi/cloudup:go_default_library",
+        "//upup/pkg/fi/cloudup/awsup:go_default_library",
         "//upup/pkg/fi/cloudup/gce:go_default_library",
         "//util/pkg/ui:go_default_library",
+        "//vendor/github.com/aws/aws-sdk-go/aws:go_default_library",
+        "//vendor/github.com/aws/aws-sdk-go/service/ec2:go_default_library",
         "//vendor/github.com/ghodss/yaml:go_default_library",
         "//vendor/github.com/golang/glog:go_default_library",
         "//vendor/golang.org/x/crypto/ssh:go_default_library",

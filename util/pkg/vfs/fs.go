@@ -112,8 +112,20 @@ func (p *FSPath) CreateFile(data []byte, acl ACL) error {
 	return p.WriteFile(data, acl)
 }
 
+// ReadFile implements Path::ReadFile
 func (p *FSPath) ReadFile() ([]byte, error) {
 	return ioutil.ReadFile(p.location)
+}
+
+// WriteTo implements io.WriterTo
+func (p *FSPath) WriteTo(out io.Writer) (int64, error) {
+	f, err := os.Open(p.location)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+
+	return io.Copy(out, f)
 }
 
 func (p *FSPath) ReadDir() ([]Path, error) {
@@ -140,6 +152,8 @@ func (p *FSPath) ReadTree() ([]Path, error) {
 	return paths, nil
 }
 
+// readTree recursively finds files and adds them to dest
+// It excludes directories.
 func readTree(base string, dest *[]Path) error {
 	files, err := ioutil.ReadDir(base)
 	if err != nil {
@@ -147,12 +161,13 @@ func readTree(base string, dest *[]Path) error {
 	}
 	for _, f := range files {
 		p := path.Join(base, f.Name())
-		*dest = append(*dest, NewFSPath(p))
 		if f.IsDir() {
 			err = readTree(p, dest)
 			if err != nil {
 				return err
 			}
+		} else {
+			*dest = append(*dest, NewFSPath(p))
 		}
 	}
 	return nil

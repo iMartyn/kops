@@ -88,7 +88,7 @@ kops create cluster
       --master-zones stringSlice             Zones in which to run masters (must be an odd number)
       --model string                         Models to apply (separate multiple models with commas) (default "config,proto,cloudup")
       --network-cidr string                  Set to override the default network CIDR
-      --networking string                    Networking mode to use.  kubenet (default), classic, external, kopeio-vxlan (or kopeio), weave, flannel-vxlan (or flannel), flannel-udp, calico, canal, kube-router, romana. (default "kubenet")
+      --networking string                    Networking mode to use.  kubenet (default), classic, external, kopeio-vxlan (or kopeio), weave, flannel-vxlan (or flannel), flannel-udp, calico, canal, kube-router, romana, amazon-vpc-routed-eni. (default "kubenet")
       --node-count int32                     Set the number of nodes
       --node-security-groups stringSlice     Add precreated additional security groups to nodes.
       --node-size string                     Set instance size for nodes
@@ -99,8 +99,10 @@ kops create cluster
       --project string                       Project to use (must be set on GCE)
       --ssh-access stringSlice               Restrict SSH access to this CIDR.  If not set, access will not be restricted by IP. (default [0.0.0.0/0])
       --ssh-public-key string                SSH public key to use (default "~/.ssh/id_rsa.pub")
-      --target string                        Valid targets: direct, terraform, direct. Set this flag to terraform if you want kops to generate terraform (default "direct")
+      --subnets stringSlice                  Set to use shared subnets
+      --target string                        Valid targets: direct, terraform, cloudformation. Set this flag to terraform if you want kops to generate terraform (default "direct")
   -t, --topology string                      Controls network topology for the cluster. public|private. Default is 'public'. (default "public")
+      --utility-subnets stringSlice          Set to use shared utility subnets
       --vpc string                           Set to use a shared VPC
   -y, --yes                                  Specify --yes to immediately create the cluster
       --zones stringSlice                    Zones in which to run the cluster

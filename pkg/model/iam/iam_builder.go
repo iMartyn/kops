@@ -186,6 +186,10 @@ func (b *PolicyBuilder) BuildAWSPolicyMaster() (*Policy, error) {
 		addRomanaCNIPermissions(p, resource, b.Cluster.Spec.IAM.Legacy)
 	}
 
+	if b.Cluster.Spec.Networking != nil && b.Cluster.Spec.Networking.AmazonVPC != nil {
+		addAmazonVPCCNIPermissions(p, resource, b.Cluster.Spec.IAM.Legacy, b.Cluster.GetName())
+	}
+
 	return p, nil
 }
 
@@ -213,6 +217,10 @@ func (b *PolicyBuilder) BuildAWSPolicyNode() (*Policy, error) {
 
 	if b.Cluster.Spec.IAM.Legacy || b.Cluster.Spec.IAM.AllowContainerRegistry {
 		addECRPermissions(p)
+	}
+
+	if b.Cluster.Spec.Networking != nil && b.Cluster.Spec.Networking.AmazonVPC != nil {
+		addAmazonVPCCNIPermissions(p, resource, b.Cluster.Spec.IAM.Legacy, b.Cluster.GetName())
 	}
 
 	return p, nil
@@ -243,6 +251,8 @@ func (b *PolicyBuilder) BuildAWSPolicyBastion() (*Policy, error) {
 func (b *PolicyBuilder) IAMPrefix() string {
 	switch b.Region {
 	case "cn-north-1":
+		return "arn:aws-cn"
+	case "cn-northwest-1":
 		return "arn:aws-cn"
 	case "us-gov-west-1":
 		return "arn:aws-us-gov"
@@ -509,7 +519,7 @@ func addNodeEC2Policies(p *Policy, resource stringorslice.StringOrSlice) {
 	p.Statement = append(p.Statement, &Statement{
 		Sid:      "kopsK8sEC2NodePerms",
 		Effect:   StatementEffectAllow,
-		Action:   stringorslice.Slice([]string{"ec2:DescribeInstances"}),
+		Action:   stringorslice.Slice([]string{"ec2:DescribeInstances", "ec2:DescribeRegions"}),
 		Resource: resource,
 	})
 }
@@ -599,6 +609,7 @@ func addMasterELBPolicies(p *Policy, resource stringorslice.StringOrSlice, legac
 			Sid:    "kopsK8sELBMasterPermsRestrictive",
 			Effect: StatementEffectAllow,
 			Action: stringorslice.Of(
+				"elasticloadbalancing:AddTags",                                 // aws_loadbalancer.go
 				"elasticloadbalancing:AttachLoadBalancerToSubnets",             // aws_loadbalancer.go
 				"elasticloadbalancing:ApplySecurityGroupsToLoadBalancer",       // aws_loadbalancer.go
 				"elasticloadbalancing:CreateLoadBalancer",                      // aws_loadbalancer.go
@@ -617,6 +628,28 @@ func addMasterELBPolicies(p *Policy, resource stringorslice.StringOrSlice, legac
 			),
 			Resource: resource,
 		})
+
+		p.Statement = append(p.Statement, &Statement{
+			Sid:    "kopsK8sNLBMasterPermsRestrictive",
+			Effect: StatementEffectAllow,
+			Action: stringorslice.Of(
+				"ec2:DescribeVpcs",                                       // aws_loadbalancer.go
+				"elasticloadbalancing:AddTags",                           // aws_loadbalancer.go
+				"elasticloadbalancing:CreateListener",                    // aws_loadbalancer.go
+				"elasticloadbalancing:CreateTargetGroup",                 // aws_loadbalancer.go
+				"elasticloadbalancing:DeleteListener",                    // aws_loadbalancer.go
+				"elasticloadbalancing:DeleteTargetGroup",                 // aws_loadbalancer.go
+				"elasticloadbalancing:DescribeListeners",                 // aws_loadbalancer.go
+				"elasticloadbalancing:DescribeLoadBalancerPolicies",      // aws_loadbalancer.go
+				"elasticloadbalancing:DescribeTargetGroups",              // aws_loadbalancer.go
+				"elasticloadbalancing:DescribeTargetHealth",              // aws_loadbalancer.go
+				"elasticloadbalancing:ModifyListener",                    // aws_loadbalancer.go
+				"elasticloadbalancing:ModifyTargetGroup",                 // aws_loadbalancer.go
+				"elasticloadbalancing:RegisterTargets",                   // aws_loadbalancer.go
+				"elasticloadbalancing:SetLoadBalancerPoliciesOfListener", // aws_loadbalancer.go
+			),
+			Resource: resource,
+		})
 	}
 }
 
@@ -629,6 +662,7 @@ func addMasterASPolicies(p *Policy, resource stringorslice.StringOrSlice, legacy
 				"autoscaling:DescribeAutoScalingGroups",
 				"autoscaling:DescribeAutoScalingInstances",
 				"autoscaling:DescribeLaunchConfigurations",
+				"autoscaling:DescribeTags",
 				"autoscaling:GetAsgForInstance",
 				"autoscaling:SetDesiredCapacity",
 				"autoscaling:TerminateInstanceInAutoScalingGroup",
@@ -646,6 +680,7 @@ func addMasterASPolicies(p *Policy, resource stringorslice.StringOrSlice, legacy
 				Action: stringorslice.Of(
 					"autoscaling:DescribeAutoScalingGroups",    // aws_instancegroups.go
 					"autoscaling:DescribeLaunchConfigurations", // aws.go
+					"autoscaling:DescribeTags",                 // auto_scaling.go
 					"autoscaling:GetAsgForInstance",            // aws_manager.go
 				),
 				Resource: resource,
@@ -705,6 +740,32 @@ func addRomanaCNIPermissions(p *Policy, resource stringorslice.StringOrSlice, le
 				Action: stringorslice.Slice([]string{
 					"ec2:DescribeAvailabilityZones", // vpcrouter
 					"ec2:DescribeVpcs",              // vpcrouter
+				}),
+				Resource: resource,
+			},
+		)
+	}
+}
+
+func addAmazonVPCCNIPermissions(p *Policy, resource stringorslice.StringOrSlice, legacyIAM bool, clusterName string) {
+	if legacyIAM {
+		// Legacy IAM provides ec2:*, so no additional permissions required
+		return
+	} else {
+		p.Statement = append(p.Statement,
+			&Statement{
+				Sid:    "kopsK8sEC2NodeAmazonVPCPerms",
+				Effect: StatementEffectAllow,
+				Action: stringorslice.Slice([]string{
+					"ec2:CreateNetworkInterface",
+					"ec2:AttachNetworkInterface",
+					"ec2:DeleteNetworkInterface",
+					"ec2:DetachNetworkInterface",
+					"ec2:DescribeNetworkInterfaces",
+					"ec2:DescribeInstances",
+					"ec2:ModifyNetworkInterfaceAttribute",
+					"ec2:AssignPrivateIpAddresses",
+					"tag:TagResources",
 				}),
 				Resource: resource,
 			},

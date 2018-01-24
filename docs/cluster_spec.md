@@ -23,6 +23,18 @@ spec:
 When configuring a LoadBalancer, you can also choose to have a public ELB or an internal (VPC only) ELB.  The `type`
 field should be `Public` or `Internal`.
 
+Also, you can add precreated additional security groups to the load balancer by setting `additionalSecurityGroups`.
+
+```yaml
+spec:
+  api:
+    loadBalancer:
+      type: Public
+      additionalSecurityGroups:
+      - sg-xxxxxxxx
+      - sg-xxxxxxxx
+```
+
 Additionally, you can increase idle timeout of the load balancer by setting its `idleTimeoutSeconds`. The default idle timeout is 5 minutes, with a maximum of 3600 seconds (60 minutes) being allowed by AWS.
 For more information see [configuring idle timeouts](http://docs.aws.amazon.com/elasticloadbalancing/latest/classic/config-idle-timeout.html).
 
@@ -125,8 +137,11 @@ spec:
     oidcIssuerURL: https://your-oidc-provider.svc.cluster.local
     oidcClientID: kubernetes
     oidcUsernameClaim: sub
+    oidcUsernamePrefix: "oidc:"
     oidcGroupsClaim: user_roles
+    oidcGroupsPrefix: "oidc:"
     oidcCAFile: /etc/kubernetes/ssl/kc-ca.pem
+
 ```
 
 #### audit logging
@@ -159,6 +174,8 @@ spec:
       apps/v1alpha1: "true"
 ```
 
+Will result in the flag `--runtime-config=batch/v2alpha1=true,apps/v1alpha1=true`. Note that `kube-apiserver` accepts `true` as a value for switch-like flags.
+
 #### serviceNodePortRange
 
 This value is passed as `--service-node-port-range` for `kube-apiserver`.
@@ -169,8 +186,6 @@ spec:
     serviceNodePortRange: 30000-33000
 ```
 
-Will result in the flag `--runtime-config=batch/v2alpha1=true,apps/v1alpha1=true`. Note that `kube-apiserver` accepts `true` as a value for switch-like flags.
-
 ### externalDns
 
 This block contains configuration options for your `external-DNS` provider.
@@ -179,7 +194,8 @@ The current external-DNS provider is the kops `dns-controller`, which can set up
 
 ```yaml
 spec:
-  watchIngress: true
+  externalDns:
+    watchIngress: true
 ```
 
 Default _kops_ behavior is false. `watchIngress: true` uses the default _dns-controller_ behavior which is to watch the ingress controller for changes. Set this option at risk of interrupting Service updates in some cases.
@@ -360,6 +376,7 @@ spec:
 
 ### cloudConfig
 
+#### disableSecurityGroupIngress
 If you are using aws as `cloudProvider`, you can disable authorization of ELB security group to Kubernetes Nodes security group. In other words, it will not add security group rule.
 This can be usefull to avoid AWS limit: 50 rules per security group.
 ```yaml
@@ -368,7 +385,24 @@ spec:
     disableSecurityGroupIngress: true
 ```
 
-### registryMirrors
+#### elbSecurityGroup
+*WARNING: this works only for Kubernetes version above 1.7.0.*
+
+To avoid creating a security group per elb, you can specify security group id, that will be assigned to your LoadBalancer. It must be security group id, not name. 
+`api.loadBalancer.additionalSecurityGroups` must be empty, because Kubernetes will add rules per ports that are specified in service file.
+This can be useful to avoid AWS limits: 500 security groups per region and 50 rules per security group.
+
+```yaml
+spec:
+  cloudConfig:
+    elbSecurityGroup: sg-123445678
+```
+
+### docker
+
+It is possible to override Docker daemon options for all masters and nodes in the cluster. See the [API docs](https://godoc.org/k8s.io/kops/pkg/apis/kops#DockerConfig) for the full list of options.
+
+#### registryMirrors
 
 If you have a bunch of Docker instances (physicsal or vm) running, each time one of them pulls an image that is not present on the host, it will fetch it from the internet (DockerHub). By caching these images, you can keep the traffic within your local network and avoid egress bandwidth usage.
 This setting benefits not only cluster provisioning but also image pulling.
@@ -383,15 +417,17 @@ spec:
     - https://registry.example.com
 ```
 
-#### WARNING: this works only for Kubernetes version above 1.7.0.
+#### storage
 
-For avoid to create security group per each elb, you can specify security group id, that will be assigned to your LoadBalancer. It must be security group id, not name. Also, security group must be empty, because Kubernetes will add rules per ports that are specified in service file.
-This can be usefull to avoid AWS limits: 500 security groups per region and 50 rules per security group.
+The Docker [Storage Driver](https://docs.docker.com/engine/reference/commandline/dockerd/#daemon-storage-driver) can be specified in order to override the default. Be sure the driver you choose is supported by your operating system and docker version.
 
 ```yaml
-spec:
-  cloudConfig:
-    elbSecurityGroup: sg-123445678
+docker:
+  storage: devicemapper
+  storageOpts:
+    - "dm.thinpooldev=/dev/mapper/thin-pool"
+    - "dm.use_deferred_deletion=true"
+    - "dm.use_deferred_removal=true"
 ```
 
 ### sshKeyName

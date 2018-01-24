@@ -413,6 +413,10 @@
             "Value": "us-test-1a.additionaluserdata.example.com"
           },
           {
+            "Key": "SubnetType",
+            "Value": "Public"
+          },
+          {
             "Key": "kubernetes.io/cluster/additionaluserdata.example.com",
             "Value": "owned"
           },
@@ -567,6 +571,7 @@
                 "autoscaling:DescribeAutoScalingGroups",
                 "autoscaling:DescribeAutoScalingInstances",
                 "autoscaling:DescribeLaunchConfigurations",
+                "autoscaling:DescribeTags",
                 "autoscaling:GetAsgForInstance",
                 "autoscaling:SetDesiredCapacity",
                 "autoscaling:TerminateInstanceInAutoScalingGroup",
@@ -675,7 +680,8 @@
           "Statement": [
             {
               "Action": [
-                "ec2:DescribeInstances"
+                "ec2:DescribeInstances",
+                "ec2:DescribeRegions"
               ],
               "Effect": "Allow",
               "Resource": [

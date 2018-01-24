@@ -21,10 +21,9 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
-
-	"sort"
 
 	"github.com/golang/glog"
 	"k8s.io/kops/pkg/assets"
@@ -255,6 +254,17 @@ func (t *DryRunTarget) PrintReport(taskMap map[string]Task, out io.Writer) error
 		}
 	}
 
+	if len(t.assetBuilder.FileAssets) != 0 {
+		glog.V(4).Infof("FileAssets:")
+		for _, a := range t.assetBuilder.FileAssets {
+			if a.FileURL != nil && a.CanonicalFileURL != nil {
+				glog.V(4).Infof("  %s %s", a.FileURL.String(), a.CanonicalFileURL.String())
+			} else if a.FileURL != nil {
+				glog.V(4).Infof("  %s", a.FileURL.String())
+			}
+		}
+	}
+
 	_, err := out.Write(b.Bytes())
 	return err
 }
@@ -340,7 +350,18 @@ func buildChangeList(a, e, changes Task) ([]change, error) {
 }
 
 func tryResourceAsString(v reflect.Value) (string, bool) {
+	if !v.IsValid() {
+		return "", false
+	}
 	if !v.CanInterface() {
+		return "", false
+	}
+
+	// Guard against nil interface go-tcha
+	if v.Kind() == reflect.Interface && v.IsNil() {
+		return "", false
+	}
+	if v.Kind() == reflect.Ptr && v.IsNil() {
 		return "", false
 	}
 

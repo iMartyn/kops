@@ -37,6 +37,10 @@ type SSHPath struct {
 	path   string
 }
 
+type SSHAcl struct {
+	Mode os.FileMode
+}
+
 var _ Path = &SSHPath{}
 
 func NewSSHPath(client *ssh.Client, server string, path string, sudo bool) *SSHPath {
@@ -175,10 +179,38 @@ func (p *SSHPath) WriteFile(data []byte, acl ACL) error {
 	}
 
 	if err == nil {
-		err = sftpClient.Rename(tempfile, p.path)
-		if err != nil {
-			err = fmt.Errorf("error during file write of %q: rename failed: %v", p.path, err)
+		if acl != nil {
+			sshAcl, ok := acl.(*SSHAcl)
+			if !ok {
+				err = fmt.Errorf("unexpected acl type %T", acl)
+			} else {
+				err = sftpClient.Chmod(tempfile, sshAcl.Mode)
+				if err != nil {
+					err = fmt.Errorf("error during chmod of %q: %v", tempfile, err)
+				}
+			}
 		}
+	}
+
+	if err == nil {
+		session, err := p.client.NewSession()
+		if err != nil {
+			err = fmt.Errorf("error creating session for rename: %v", err)
+		} else {
+			cmd := "mv " + tempfile + " " + p.path
+			if p.sudo {
+				cmd = "sudo " + cmd
+			}
+			err = session.Run(cmd)
+			if err != nil {
+				err = fmt.Errorf("error renaming file %q -> %q: %v", tempfile, p.path, err)
+			}
+		}
+		// sftp rename seems to fail if dest file exists
+		//err = sftpClient.Rename(tempfile, p.path)
+		//if err != nil {
+		//	err = fmt.Errorf("error during file write of %q: rename failed: %v", p.path, err)
+		//}
 	}
 
 	if err == nil {
@@ -215,26 +247,31 @@ func (p *SSHPath) CreateFile(data []byte, acl ACL) error {
 	return p.WriteFile(data, acl)
 }
 
+// ReadFile implements Path::ReadFile
 func (p *SSHPath) ReadFile() ([]byte, error) {
-	sftpClient, err := p.newClient()
+	var b bytes.Buffer
+	_, err := p.WriteTo(&b)
 	if err != nil {
 		return nil, err
+	}
+	return b.Bytes(), nil
+}
+
+// WriteTo implements io.WriterTo
+func (p *SSHPath) WriteTo(out io.Writer) (int64, error) {
+	sftpClient, err := p.newClient()
+	if err != nil {
+		return 0, err
 	}
 	defer sftpClient.Close()
 
 	f, err := sftpClient.Open(p.path)
 	if err != nil {
-		return nil, fmt.Errorf("error opening file %s over sftp: %v", p, err)
+		return 0, fmt.Errorf("error opening file %s over sftp: %v", p, err)
 	}
 	defer f.Close()
 
-	var b bytes.Buffer
-	_, err = f.WriteTo(&b)
-	if err != nil {
-		return nil, fmt.Errorf("error reading file %s over sftp: %v", p, err)
-	}
-
-	return b.Bytes(), nil
+	return f.WriteTo(out)
 }
 
 func (p *SSHPath) ReadDir() ([]Path, error) {

@@ -209,7 +209,7 @@ resource "aws_launch_configuration" "nodes-sharedvpc-example-com" {
 resource "aws_route" "0-0-0-0--0" {
   route_table_id         = "${aws_route_table.sharedvpc-example-com.id}"
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = "fake-ig"
+  gateway_id             = "igw-1"
 }
 
 resource "aws_route_table" "sharedvpc-example-com" {
@@ -364,6 +364,7 @@ resource "aws_subnet" "us-test-1a-sharedvpc-example-com" {
   tags = {
     KubernetesCluster                             = "sharedvpc.example.com"
     Name                                          = "us-test-1a.sharedvpc.example.com"
+    SubnetType                                    = "Public"
     "kubernetes.io/cluster/sharedvpc.example.com" = "owned"
     "kubernetes.io/role/elb"                      = "1"
   }

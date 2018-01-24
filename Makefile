@@ -20,7 +20,7 @@ GCS_URL=$(GCS_LOCATION:gs://%=https://storage.googleapis.com/%)
 LATEST_FILE?=latest-ci.txt
 GOPATH_1ST=$(shell go env | grep GOPATH | cut -f 2 -d \")
 UNIQUE:=$(shell date +%s)
-GOVERSION=1.8.3
+GOVERSION=1.9.2
 BUILD=$(GOPATH_1ST)/src/k8s.io/kops/.build
 LOCAL=$(BUILD)/local
 BINDATA_TARGETS=upup/models/bindata.go federation/model/bindata.go
@@ -43,10 +43,10 @@ SOURCES:=$(shell find . -name "*.go")
 MAKEDIR:=$(strip $(shell dirname "$(realpath $(lastword $(MAKEFILE_LIST)))"))
 
 # Keep in sync with upup/models/cloudup/resources/addons/dns-controller/
-DNS_CONTROLLER_TAG=1.8.0-beta.1
+DNS_CONTROLLER_TAG=1.8.0
 
-KOPS_RELEASE_VERSION = 1.8.0-beta.1
-KOPS_CI_VERSION      = 1.8.0-beta.2
+KOPS_RELEASE_VERSION = 1.8.0
+KOPS_CI_VERSION      = 1.8.1-beta.1
 
 # kops local location
 KOPS                 = ${LOCAL}/kops
@@ -187,6 +187,7 @@ codegen: kops-gobindata
 	PATH=${GOPATH_1ST}/bin:${PATH} go generate k8s.io/kops/upup/pkg/fi/cloudup/awstasks
 	PATH=${GOPATH_1ST}/bin:${PATH} go generate k8s.io/kops/upup/pkg/fi/cloudup/gcetasks
 	PATH=${GOPATH_1ST}/bin:${PATH} go generate k8s.io/kops/upup/pkg/fi/cloudup/dotasks
+	PATH=${GOPATH_1ST}/bin:${PATH} go generate k8s.io/kops/upup/pkg/fi/cloudup/openstacktasks
 	PATH=${GOPATH_1ST}/bin:${PATH} go generate k8s.io/kops/upup/pkg/fi/assettasks
 	PATH=${GOPATH_1ST}/bin:${PATH} go generate k8s.io/kops/upup/pkg/fi/fitasks
 
@@ -587,11 +588,15 @@ kops-server-push: kops-server-build
 
 .PHONY: bazel-test
 bazel-test:
-	bazel ${BAZEL_OPTIONS} test //cmd/... //pkg/... //channels/... //nodeup/... //channels/... //protokube/... //dns-controller/... //tests/... //upup/... //util/... //hack:verify-all --test_output=errors
+	bazel ${BAZEL_OPTIONS} test //cmd/... //pkg/... //channels/... //nodeup/... //protokube/... //dns-controller/... //tests/... //upup/... //util/... //federation/... //hack:verify-all --test_output=errors
 
 .PHONY: bazel-build
 bazel-build:
-	bazel build //cmd/... //pkg/... //channels/... //nodeup/... //channels/... //protokube/... //dns-controller/...
+	bazel build //cmd/... //pkg/... //channels/... //nodeup/... //protokube/... //dns-controller/... //util/... //federation/...
+
+.PHONY: bazel-build-cli
+bazel-build-cli:
+	bazel build //cmd/kops/...
 
 # Not working yet, but we can hope
 #.PHONY: bazel-crossbuild-kops
@@ -639,3 +644,12 @@ check-markdown-links:
 		-e LANGUAGE=en_US.UTF-8 \
 		rubygem/awesome_bot --allow-dupe --allow-redirect \
 		$(shell find $$PWD -name "*.md" -mindepth 1 -printf '%P\n' | grep -v vendor | grep -v _vendor | grep -v Changelog.md)
+
+#-----------------------------------------------------------
+# kube-discovery
+
+.PHONY: push-kube-discovery
+push-kube-discovery:
+	bazel run //kube-discovery/images:kube-discovery
+	docker tag bazel/kube-discovery/images:kube-discovery ${DOCKER_REGISTRY}/kube-discovery:${DOCKER_TAG}
+	docker push ${DOCKER_REGISTRY}/kube-discovery:${DOCKER_TAG}

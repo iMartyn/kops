@@ -24,16 +24,16 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
-	"github.com/aws/aws-sdk-go/service/elb"
+	"github.com/aws/aws-sdk-go/service/elb/elbiface"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/route53/route53iface"
 	"github.com/golang/glog"
 	"k8s.io/api/core/v1"
+	"k8s.io/kops/dnsprovider/pkg/dnsprovider"
+	dnsproviderroute53 "k8s.io/kops/dnsprovider/pkg/dnsprovider/providers/aws/route53"
 	"k8s.io/kops/pkg/apis/kops"
 	"k8s.io/kops/pkg/cloudinstances"
 	"k8s.io/kops/upup/pkg/fi"
-	"k8s.io/kubernetes/federation/pkg/dnsprovider"
-	dnsproviderroute53 "k8s.io/kubernetes/federation/pkg/dnsprovider/providers/aws/route53"
 )
 
 type MockAWSCloud struct {
@@ -74,6 +74,7 @@ type MockCloud struct {
 	MockCloudFormation *cloudformation.CloudFormation
 	MockEC2            ec2iface.EC2API
 	MockRoute53        route53iface.Route53API
+	MockELB            elbiface.ELBAPI
 }
 
 func (c *MockAWSCloud) DeleteGroup(g *cloudinstances.CloudInstanceGroup) error {
@@ -161,7 +162,7 @@ func (c *MockAWSCloud) DescribeInstance(instanceID string) (*ec2.Instance, error
 }
 
 func (c *MockAWSCloud) DescribeVPC(vpcID string) (*ec2.Vpc, error) {
-	return nil, fmt.Errorf("MockAWSCloud DescribeVPC not implemented")
+	return describeVPC(c, vpcID)
 }
 
 func (c *MockAWSCloud) ResolveImage(name string) (*ec2.Image, error) {
@@ -194,9 +195,11 @@ func (c *MockAWSCloud) IAM() *iam.IAM {
 	return nil
 }
 
-func (c *MockAWSCloud) ELB() *elb.ELB {
-	glog.Fatalf("MockAWSCloud ELB not implemented")
-	return nil
+func (c *MockAWSCloud) ELB() elbiface.ELBAPI {
+	if c.MockELB == nil {
+		glog.Fatalf("MockAWSCloud MockELB not set")
+	}
+	return c.MockELB
 }
 
 func (c *MockAWSCloud) Autoscaling() autoscalingiface.AutoScalingAPI {
@@ -214,7 +217,7 @@ func (c *MockAWSCloud) Route53() route53iface.Route53API {
 }
 
 func (c *MockAWSCloud) FindVPCInfo(id string) (*fi.VPCInfo, error) {
-	return nil, fmt.Errorf("MockAWSCloud FindVPCInfo not implemented")
+	return findVPCInfo(c, id)
 }
 
 // DefaultInstanceType determines an instance type for the specified cluster & instance group

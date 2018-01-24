@@ -17,6 +17,7 @@ limitations under the License.
 package vfs
 
 import (
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -51,6 +52,10 @@ func NewMemFSContext() *MemFSContext {
 // MarkClusterReadable pretends the current memfscontext is cluster readable; this is useful for tests
 func (c *MemFSContext) MarkClusterReadable() {
 	c.clusterReadable = true
+}
+
+func (c *MemFSPath) HasChildren() bool {
+	return len(c.children) != 0
 }
 
 func (c *MemFSPath) IsClusterReadable() bool {
@@ -101,12 +106,22 @@ func (p *MemFSPath) CreateFile(data []byte, acl ACL) error {
 	return p.WriteFile(data, acl)
 }
 
+// ReadFile implements Path::ReadFile
 func (p *MemFSPath) ReadFile() ([]byte, error) {
 	if p.contents == nil {
 		return nil, os.ErrNotExist
 	}
 	// TODO: Copy?
 	return p.contents, nil
+}
+
+// WriteTo implements io.WriterTo
+func (p *MemFSPath) WriteTo(out io.Writer) (int64, error) {
+	if p.contents == nil {
+		return 0, os.ErrNotExist
+	}
+	n, err := out.Write(p.contents)
+	return int64(n), err
 }
 
 func (p *MemFSPath) ReadDir() ([]Path, error) {
@@ -125,7 +140,9 @@ func (p *MemFSPath) ReadTree() ([]Path, error) {
 
 func (p *MemFSPath) readTree(dest *[]Path) {
 	for _, f := range p.children {
-		*dest = append(*dest, f)
+		if !f.HasChildren() {
+			*dest = append(*dest, f)
+		}
 		f.readTree(dest)
 	}
 }

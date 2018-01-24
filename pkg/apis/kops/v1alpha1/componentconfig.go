@@ -116,6 +116,9 @@ type KubeletConfigSpec struct {
 	// image garbage collection is never run. Lowest disk usage to garbage
 	// collect to.
 	ImageGCLowThresholdPercent *int32 `json:"imageGCLowThresholdPercent,omitempty" flag:"image-gc-low-threshold"`
+	// ImagePullProgressDeadline is the timeout for image pulls
+	// If no pulling progress is made before this deadline, the image pulling will be cancelled. (default 1m0s)
+	ImagePullProgressDeadline *metav1.Duration `json:"imagePullProgressDeadline,omitempty" flag:"image-pull-progress-deadline"`
 	// Comma-delimited list of hard eviction expressions.  For example, 'memory.available<300Mi'.
 	EvictionHard *string `json:"evictionHard,omitempty" flag:"eviction-hard"`
 	// Comma-delimited list of soft eviction expressions.  For example, 'memory.available<300Mi'.
@@ -148,6 +151,8 @@ type KubeletConfigSpec struct {
 	RuntimeRequestTimeout *metav1.Duration `json:"runtimeRequestTimeout,omitempty" flag:"runtime-request-timeout"`
 	// VolumeStatsAggPeriod is the interval for kubelet to calculate and cache the volume disk usage for all pods and volumes
 	VolumeStatsAggPeriod *metav1.Duration `json:"volumeStatsAggPeriod,omitempty" flag:"volume-stats-agg-period"`
+	// Tells the Kubelet to fail to start if swap is enabled on the node.
+	FailSwapOn *bool `json:"failSwapOn,omitempty" flag:"fail-swap-on"`
 }
 
 // KubeProxyConfig defined the configuration for a proxy
@@ -225,23 +230,36 @@ type KubeAPIServerConfig struct {
 	KubeletPreferredAddressTypes []string `json:"kubeletPreferredAddressTypes,omitempty" flag:"kubelet-preferred-address-types"`
 	// StorageBackend is the backend storage
 	StorageBackend *string `json:"storageBackend,omitempty" flag:"storage-backend"`
-	// The OpenID claim to use as the user name.
-	// Note that claims other than the default ('sub') is not guaranteed to be unique and immutable.
+	// OIDCUsernameClaim is the OpenID claim to use as the user name.
+	// Note that claims other than the default ('sub') is not guaranteed to be
+	// unique and immutable.
 	OIDCUsernameClaim *string `json:"oidcUsernameClaim,omitempty" flag:"oidc-username-claim"`
-	// If provided, the name of a custom OpenID Connect claim for specifying user groups.
+	// OIDCUsernamePrefix is the prefix prepended to username claims to prevent
+	// clashes with existing names (such as 'system:' users).
+	OIDCUsernamePrefix *string `json:"oidcUsernamePrefix,omitempty" flag:"oidc-username-prefix"`
+	// OIDCGroupsClaim if provided, the name of a custom OpenID Connect claim for
+	// specifying user groups.
 	// The claim value is expected to be a string or array of strings.
 	OIDCGroupsClaim *string `json:"oidcGroupsClaim,omitempty" flag:"oidc-groups-claim"`
-	// The URL of the OpenID issuer, only HTTPS scheme will be accepted.
+	// OIDCGroupsPrefix is the prefix prepended to group claims to prevent
+	// clashes with existing names (such as 'system:' groups)
+	OIDCGroupsPrefix *string `json:"oidcGroupsPrefix,omitempty" flag:"oidc-groups-prefix"`
+	// OIDCIssuerURL is the URL of the OpenID issuer, only HTTPS scheme will
+	// be accepted.
 	// If set, it will be used to verify the OIDC JSON Web Token (JWT).
 	OIDCIssuerURL *string `json:"oidcIssuerURL,omitempty" flag:"oidc-issuer-url"`
-	// The client ID for the OpenID Connect client, must be set if oidc-issuer-url is set.
+	// OIDCClientID is the client ID for the OpenID Connect client, must be set
+	// if oidc-issuer-url is set.
 	OIDCClientID *string `json:"oidcClientID,omitempty" flag:"oidc-client-id"`
-	// If set, the OpenID server's certificate will be verified by one of the authorities in the oidc-ca-file
+	// OIDCCAFile if set, the OpenID server's certificate will be verified by one
+	// of the authorities in the oidc-ca-file
 	OIDCCAFile *string `json:"oidcCAFile,omitempty" flag:"oidc-ca-file"`
 	// The apiserver's client certificate used for outbound requests.
 	ProxyClientCertFile *string `json:"proxyClientCertFile,omitempty" flag:"proxy-client-cert-file"`
 	// The apiserver's client key used for outbound requests.
 	ProxyClientKeyFile *string `json:"proxyClientKeyFile,omitempty" flag:"proxy-client-key-file"`
+	// AuditLogFormat flag specifies the format type for audit log files.
+	AuditLogFormat *string `json:"auditLogFormat,omitempty" flag:"audit-log-format"`
 	// If set, all requests coming to the apiserver will be logged to this file.
 	AuditLogPath *string `json:"auditLogPath,omitempty" flag:"audit-log-path"`
 	// The maximum number of days to retain old audit log files based on the timestamp encoded in their filename.
@@ -323,6 +341,9 @@ type KubeControllerManagerConfig struct {
 	// long the autoscaler has to wait before another upscale operation can
 	// be performed after the current one has completed.
 	HorizontalPodAutoscalerUpscaleDelay *metav1.Duration `json:"horizontalPodAutoscalerUpscaleDelay,omitempty" flag:"horizontal-pod-autoscaler-upscale-delay"`
+	// HorizontalPodAutoscalerUseRestClients determines if the new-style clients
+	// should be used if support for custom metrics is enabled.
+	HorizontalPodAutoscalerUseRestClients *bool `json:"horizontalPodAutoscalerUseRestClients,omitempty" flag:"horizontal-pod-autoscaler-use-rest-clients"`
 	// FeatureGates is set of key=value pairs that describe feature gates for alpha/experimental features.
 	FeatureGates map[string]string `json:"featureGates,omitempty" flag:"feature-gates"`
 }

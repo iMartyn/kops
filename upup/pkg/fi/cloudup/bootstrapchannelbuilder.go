@@ -191,7 +191,7 @@ func (b *BootstrapChannelBuilder) buildManifest() (*channelsapi.Addons, map[stri
 	if externalDNS == nil || !externalDNS.Disable {
 		{
 			key := "dns-controller.addons.k8s.io"
-			version := "1.8.0-beta.1"
+			version := "1.8.0"
 
 			{
 				location := key + "/pre-k8s-1.6.yaml"
@@ -353,7 +353,7 @@ func (b *BootstrapChannelBuilder) buildManifest() (*channelsapi.Addons, map[stri
 
 	if b.cluster.Spec.Networking.Kopeio != nil {
 		key := "networking.kope.io"
-		version := "1.0.20171015"
+		version := "1.0.20180120"
 
 		{
 			location := key + "/pre-k8s-1.6.yaml"
@@ -388,8 +388,8 @@ func (b *BootstrapChannelBuilder) buildManifest() (*channelsapi.Addons, map[stri
 
 	if b.cluster.Spec.Networking.Weave != nil {
 		key := "networking.weave"
-		// 2.0.6-kops.1 = 2.0.5 with kops manifest tweaks.  This should go away with the next version bump.
-		version := "2.0.6-kops.1"
+		// 2.1.3-kops.1 = 2.1.3, kops packaging version 1.
+		version := "2.1.3-kops.1"
 
 		{
 			location := key + "/pre-k8s-1.6.yaml"
@@ -439,7 +439,7 @@ func (b *BootstrapChannelBuilder) buildManifest() (*channelsapi.Addons, map[stri
 
 	if b.cluster.Spec.Networking.Flannel != nil {
 		key := "networking.flannel"
-		version := "0.9.0-kops.1"
+		version := "0.9.1-kops.2"
 
 		{
 			location := key + "/pre-k8s-1.6.yaml"
@@ -476,8 +476,8 @@ func (b *BootstrapChannelBuilder) buildManifest() (*channelsapi.Addons, map[stri
 		key := "networking.projectcalico.org"
 		versions := map[string]string{
 			"pre-k8s-1.6": "2.4.1",
-			"k8s-1.6":     "2.6.2",
-			"k8s-1.7":     "2.6.2",
+			"k8s-1.6":     "2.6.6",
+			"k8s-1.7":     "2.6.6",
 		}
 
 		{
@@ -532,7 +532,7 @@ func (b *BootstrapChannelBuilder) buildManifest() (*channelsapi.Addons, map[stri
 		versions := map[string]string{
 			"pre-k8s-1.6": "2.4.2-kops.1",
 			"k8s-1.6":     "2.4.2-kops.1",
-			"k8s-1.8":     "2.6.3-kops.1",
+			"k8s-1.8":     "2.6.3-kops.2",
 		}
 
 		{
@@ -621,22 +621,42 @@ func (b *BootstrapChannelBuilder) buildManifest() (*channelsapi.Addons, map[stri
 		}
 	}
 
+	if b.cluster.Spec.Networking.AmazonVPC != nil {
+		key := "networking.amazon-vpc-routed-eni"
+		version := "0.1.1-kops.1"
+
+		{
+			location := fmt.Sprintf("%v/%v.yaml", key, version)
+			id := "k8s-1.7"
+
+			addons.Spec.Addons = append(addons.Spec.Addons, &channelsapi.AddonSpec{
+				Name:              fi.String(key),
+				Version:           fi.String(version),
+				Selector:          networkingSelector,
+				Manifest:          fi.String(location),
+				KubernetesVersion: ">=1.7.0",
+				Id:                id,
+			})
+			manifests[key+"-"+id] = "addons/" + location
+		}
+	}
+
 	authenticationSelector := map[string]string{"role.kubernetes.io/authentication": "1"}
 
 	if b.cluster.Spec.Authentication != nil && b.cluster.Spec.Authentication.Kopeio != nil {
 		key := "authentication.kope.io"
-		version := "1.0.20170619"
+		version := "1.0.20171125"
 
 		{
-			location := key + "/k8s-1.6.yaml"
-			id := "k8s-1.6"
+			location := key + "/k8s-1.8.yaml"
+			id := "k8s-1.8"
 
 			addons.Spec.Addons = append(addons.Spec.Addons, &channelsapi.AddonSpec{
 				Name:              fi.String(key),
 				Version:           fi.String(version),
 				Selector:          authenticationSelector,
 				Manifest:          fi.String(location),
-				KubernetesVersion: ">=1.6.0",
+				KubernetesVersion: ">=1.8.0",
 				Id:                id,
 			})
 			manifests[key+"-"+id] = "addons/" + location

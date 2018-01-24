@@ -26,6 +26,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
+	"k8s.io/kops/pkg/apis/kops"
 	"k8s.io/kops/upup/pkg/fi"
 	"k8s.io/kubernetes/pkg/kubectl/cmd/templates"
 	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
@@ -90,7 +91,12 @@ func (c *DescribeSecretsCommand) Run(args []string) error {
 		return err
 	}
 
-	items, err := listSecrets(keyStore, secretStore, c.Type, args)
+	sshCredentialStore, err := clientset.SSHCredentialStore(cluster)
+	if err != nil {
+		return err
+	}
+
+	items, err := listSecrets(keyStore, secretStore, sshCredentialStore, c.Type, args)
 	if err != nil {
 		return err
 	}
@@ -113,19 +119,19 @@ func (c *DescribeSecretsCommand) Run(args []string) error {
 		fmt.Fprintf(w, "Id:\t%s\n", i.Id)
 
 		switch i.Type {
-		case fi.SecretTypeKeypair:
+		case kops.SecretTypeKeypair:
 			err = describeKeypair(keyStore, i, &b)
 			if err != nil {
 				return err
 			}
 
-		case fi.SecretTypeSSHPublicKey:
+		case SecretTypeSSHPublicKey:
 			err = describeSSHPublicKey(i, &b)
 			if err != nil {
 				return err
 			}
 
-		case fi.SecretTypeSecret:
+		case kops.SecretTypeSecret:
 			err = describeSecret(i, &b)
 			if err != nil {
 				return err
