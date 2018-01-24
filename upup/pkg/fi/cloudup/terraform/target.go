@@ -185,6 +185,9 @@ func (t *TerraformTarget) Finish(taskMap map[string]fi.Task) error {
 		providerGoogle := make(map[string]interface{})
 		providerGoogle["project"] = t.Project
 		providerGoogle["region"] = t.Region
+		for k, v := range t.extraProviderConfig {
+			providerGoogle[k] = v
+		}
 		providersByName["google"] = providerGoogle
 	} else if t.Cloud.ProviderID() == kops.CloudProviderAWS {
 		providerAWS := make(map[string]interface{})
@@ -196,6 +199,9 @@ func (t *TerraformTarget) Finish(taskMap map[string]fi.Task) error {
 	} else if t.Cloud.ProviderID() == kops.CloudProviderVSphere {
 		providerVSphere := make(map[string]interface{})
 		providerVSphere["region"] = t.Region
+		for k, v := range t.extraProviderConfig {
+			providerVSphere[k] = v
+		}
 		providersByName["vsphere"] = providerVSphere
 	}
 
